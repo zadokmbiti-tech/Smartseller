@@ -1,0 +1,5 @@
+- [API server TS return pattern](api-server-return-pattern.md) — Express 5 async handlers need `{ res.json(); return; }` not `return res.json()` for early exits to pass strict TS
+- [DB lib stale declarations](db-lib-stale-declarations.md) — after adding new schema files to lib/db, always run `pnpm run typecheck:libs` before api-server typecheck
+- [Drizzle ANY ARRAY empty guard](drizzle-any-array-guard.md) — `ANY(ARRAY[])` is invalid Postgres SQL; guard with `arr.length > 0` before using sql.join() in WHERE
+- [Expo Router Metro route map](expo-router-metro-routes.md) — Metro builds route map at startup; new screen files added after startup won't be picked up until workflow restart
+- [Orval hook param order](orval-hook-param-order.md) — generated hooks take `params` as first arg and `{ query: {...} }` as second; subagents often swap these

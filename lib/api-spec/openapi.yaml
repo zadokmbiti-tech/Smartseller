@@ -1,0 +1,1694 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: SmartStock AI - POS & Inventory Management API for Kenyan retailers
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: products
+    description: Product catalog management
+  - name: categories
+    description: Product categories
+  - name: inventory
+    description: Stock tracking and adjustments
+  - name: sales
+    description: POS sales and transactions
+  - name: suppliers
+    description: Supplier records
+  - name: purchase-orders
+    description: Purchase order management
+  - name: analytics
+    description: Sales analytics and reporting
+  - name: forecasting
+    description: AI demand forecasting
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # ─── CATEGORIES ────────────────────────────────────────────────────────────
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [categories]
+      summary: List all categories
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+    post:
+      operationId: createCategory
+      tags: [categories]
+      summary: Create a category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCategoryInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+
+  /categories/{id}:
+    get:
+      operationId: getCategory
+      tags: [categories]
+      summary: Get category by ID
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: updateCategory
+      tags: [categories]
+      summary: Update a category
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCategoryInput"
+      responses:
+        "200":
+          description: Updated category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+    delete:
+      operationId: deleteCategory
+      tags: [categories]
+      summary: Delete a category
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── PRODUCTS ──────────────────────────────────────────────────────────────
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List all products
+      parameters:
+        - name: categoryId
+          in: query
+          schema:
+            type: integer
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: lowStock
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Create a product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductInput"
+      responses:
+        "201":
+          description: Created product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Get product by ID
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: updateProduct
+      tags: [products]
+      summary: Update a product
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductInput"
+      responses:
+        "200":
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      summary: Delete a product
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Deleted
+
+  /products/barcode/{barcode}:
+    get:
+      operationId: getProductByBarcode
+      tags: [products]
+      summary: Look up product by barcode/SKU
+      parameters:
+        - name: barcode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── INVENTORY / STOCK ─────────────────────────────────────────────────────
+  /inventory/adjustments:
+    get:
+      operationId: listStockAdjustments
+      tags: [inventory]
+      summary: List stock adjustments/audit log
+      parameters:
+        - name: productId
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of stock adjustments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockAdjustment"
+    post:
+      operationId: createStockAdjustment
+      tags: [inventory]
+      summary: Record a stock adjustment (damage, shrinkage, correction)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStockAdjustmentInput"
+      responses:
+        "201":
+          description: Adjustment recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockAdjustment"
+
+  /inventory/low-stock:
+    get:
+      operationId: getLowStockProducts
+      tags: [inventory]
+      summary: Get products below their reorder level
+      responses:
+        "200":
+          description: Low stock products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LowStockAlert"
+
+  /inventory/movements/{productId}:
+    get:
+      operationId: getProductStockMovements
+      tags: [inventory]
+      summary: Get stock movement history for a product
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        "200":
+          description: Stock movements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockMovement"
+
+  # ─── SUPPLIERS ─────────────────────────────────────────────────────────────
+  /suppliers:
+    get:
+      operationId: listSuppliers
+      tags: [suppliers]
+      summary: List all suppliers
+      responses:
+        "200":
+          description: List of suppliers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Supplier"
+    post:
+      operationId: createSupplier
+      tags: [suppliers]
+      summary: Create a supplier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSupplierInput"
+      responses:
+        "201":
+          description: Created supplier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+
+  /suppliers/{id}:
+    get:
+      operationId: getSupplier
+      tags: [suppliers]
+      summary: Get supplier by ID
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Supplier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: updateSupplier
+      tags: [suppliers]
+      summary: Update a supplier
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSupplierInput"
+      responses:
+        "200":
+          description: Updated supplier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+    delete:
+      operationId: deleteSupplier
+      tags: [suppliers]
+      summary: Delete a supplier
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── PURCHASE ORDERS ───────────────────────────────────────────────────────
+  /purchase-orders:
+    get:
+      operationId: listPurchaseOrders
+      tags: [purchase-orders]
+      summary: List purchase orders
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, ordered, received, cancelled]
+        - name: supplierId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of purchase orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PurchaseOrder"
+    post:
+      operationId: createPurchaseOrder
+      tags: [purchase-orders]
+      summary: Create a purchase order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePurchaseOrderInput"
+      responses:
+        "201":
+          description: Created purchase order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrder"
+
+  /purchase-orders/{id}:
+    get:
+      operationId: getPurchaseOrder
+      tags: [purchase-orders]
+      summary: Get purchase order by ID
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Purchase order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrder"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: updatePurchaseOrder
+      tags: [purchase-orders]
+      summary: Update a purchase order
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePurchaseOrderInput"
+      responses:
+        "200":
+          description: Updated purchase order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrder"
+
+  /purchase-orders/{id}/receive:
+    post:
+      operationId: receivePurchaseOrder
+      tags: [purchase-orders]
+      summary: Mark purchase order as received and update stock
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Purchase order received, stock updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrder"
+
+  # ─── SALES / POS ───────────────────────────────────────────────────────────
+  /sales:
+    get:
+      operationId: listSales
+      tags: [sales]
+      summary: List sales transactions
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: paymentMethod
+          in: query
+          schema:
+            type: string
+            enum: [cash, mpesa, bank]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of sales
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sale"
+    post:
+      operationId: createSale
+      tags: [sales]
+      summary: Create a sale (checkout)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSaleInput"
+      responses:
+        "201":
+          description: Sale created, stock decremented
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sale"
+
+  /sales/{id}:
+    get:
+      operationId: getSale
+      tags: [sales]
+      summary: Get sale by ID
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Sale
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sale"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /sales/daily-summary:
+    get:
+      operationId: getDailySalesSummary
+      tags: [sales]
+      summary: Get today's till summary / reconciliation
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Daily sales summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailySummary"
+
+  /sales/{id}/mpesa-status:
+    get:
+      operationId: getMpesaPaymentStatus
+      tags: [sales]
+      summary: Check M-Pesa STK push payment status
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: M-Pesa payment status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MpesaStatus"
+
+  /sales/mpesa/callback:
+    post:
+      operationId: mpesaCallback
+      tags: [sales]
+      summary: Daraja M-Pesa STK push callback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Callback processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ResultCode:
+                    type: integer
+                  ResultDesc:
+                    type: string
+
+  # ─── ANALYTICS ─────────────────────────────────────────────────────────────
+  /analytics/overview:
+    get:
+      operationId: getAnalyticsOverview
+      tags: [analytics]
+      summary: High-level dashboard metrics
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, week, month, year]
+            default: month
+      responses:
+        "200":
+          description: Overview metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsOverview"
+
+  /analytics/sales-trend:
+    get:
+      operationId: getSalesTrend
+      tags: [analytics]
+      summary: Sales trend over time (daily/weekly/monthly)
+      parameters:
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month]
+            default: day
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Sales trend data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SalesTrendPoint"
+
+  /analytics/top-products:
+    get:
+      operationId: getTopProducts
+      tags: [analytics]
+      summary: Best and worst performing products by revenue and volume
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [week, month, year]
+            default: month
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Top products
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopProductsResult"
+
+  /analytics/payment-breakdown:
+    get:
+      operationId: getPaymentBreakdown
+      tags: [analytics]
+      summary: Sales breakdown by payment method
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, week, month, year]
+            default: month
+      responses:
+        "200":
+          description: Payment breakdown
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PaymentBreakdownItem"
+
+  /analytics/category-performance:
+    get:
+      operationId: getCategoryPerformance
+      tags: [analytics]
+      summary: Revenue and margin per category
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [week, month, year]
+            default: month
+      responses:
+        "200":
+          description: Category performance
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CategoryPerformance"
+
+  # ─── FORECASTING ───────────────────────────────────────────────────────────
+  /forecasting/reorder-recommendations:
+    get:
+      operationId: getReorderRecommendations
+      tags: [forecasting]
+      summary: AI reorder recommendations (weighted moving average)
+      responses:
+        "200":
+          description: Reorder recommendations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReorderRecommendation"
+
+  /forecasting/demand/{productId}:
+    get:
+      operationId: getProductDemandForecast
+      tags: [forecasting]
+      summary: Demand forecast for a specific product (next 30 days)
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Demand forecast
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DemandForecast"
+
+  /forecasting/stockout-risk:
+    get:
+      operationId: getStockoutRisk
+      tags: [forecasting]
+      summary: Products at risk of stocking out in the next 14 days
+      responses:
+        "200":
+          description: Stockout risk list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockoutRisk"
+
+components:
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+        - message
+
+    # ─── Categories ──────────────────────────────────────────────────────────
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - createdAt
+
+    CreateCategoryInput:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+      required:
+        - name
+
+    # ─── Products ────────────────────────────────────────────────────────────
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        sku:
+          type: string
+        barcode:
+          type: string
+          nullable: true
+        name:
+          type: string
+        categoryId:
+          type: integer
+          nullable: true
+        categoryName:
+          type: string
+          nullable: true
+        costPrice:
+          type: number
+          format: float
+        sellingPrice:
+          type: number
+          format: float
+        stockQty:
+          type: integer
+        reorderLevel:
+          type: integer
+        unit:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - sku
+        - name
+        - costPrice
+        - sellingPrice
+        - stockQty
+        - reorderLevel
+        - unit
+        - isActive
+        - createdAt
+        - updatedAt
+
+    CreateProductInput:
+      type: object
+      properties:
+        sku:
+          type: string
+        barcode:
+          type: string
+          nullable: true
+        name:
+          type: string
+        categoryId:
+          type: integer
+          nullable: true
+        costPrice:
+          type: number
+          format: float
+        sellingPrice:
+          type: number
+          format: float
+        stockQty:
+          type: integer
+          default: 0
+        reorderLevel:
+          type: integer
+          default: 10
+        unit:
+          type: string
+          default: pcs
+      required:
+        - sku
+        - name
+        - costPrice
+        - sellingPrice
+
+    # ─── Inventory ───────────────────────────────────────────────────────────
+    StockAdjustment:
+      type: object
+      properties:
+        id:
+          type: integer
+        productId:
+          type: integer
+        productName:
+          type: string
+        adjustmentType:
+          type: string
+          enum: [damage, shrinkage, correction, opening_stock, return]
+        quantityChange:
+          type: integer
+        quantityBefore:
+          type: integer
+        quantityAfter:
+          type: integer
+        reason:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - productId
+        - productName
+        - adjustmentType
+        - quantityChange
+        - quantityBefore
+        - quantityAfter
+        - createdAt
+
+    CreateStockAdjustmentInput:
+      type: object
+      properties:
+        productId:
+          type: integer
+        adjustmentType:
+          type: string
+          enum: [damage, shrinkage, correction, opening_stock, return]
+        quantityChange:
+          type: integer
+        reason:
+          type: string
+          nullable: true
+      required:
+        - productId
+        - adjustmentType
+        - quantityChange
+
+    LowStockAlert:
+      type: object
+      properties:
+        productId:
+          type: integer
+        sku:
+          type: string
+        name:
+          type: string
+        stockQty:
+          type: integer
+        reorderLevel:
+          type: integer
+        deficit:
+          type: integer
+        categoryName:
+          type: string
+          nullable: true
+      required:
+        - productId
+        - sku
+        - name
+        - stockQty
+        - reorderLevel
+        - deficit
+
+    StockMovement:
+      type: object
+      properties:
+        id:
+          type: integer
+        movementType:
+          type: string
+          enum: [sale, purchase, adjustment, return]
+        quantityChange:
+          type: integer
+        quantityAfter:
+          type: integer
+        referenceId:
+          type: integer
+          nullable: true
+        referenceType:
+          type: string
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - movementType
+        - quantityChange
+        - quantityAfter
+        - createdAt
+
+    # ─── Suppliers ───────────────────────────────────────────────────────────
+    Supplier:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        contactName:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - createdAt
+
+    CreateSupplierInput:
+      type: object
+      properties:
+        name:
+          type: string
+        contactName:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+      required:
+        - name
+
+    # ─── Purchase Orders ─────────────────────────────────────────────────────
+    PurchaseOrder:
+      type: object
+      properties:
+        id:
+          type: integer
+        supplierId:
+          type: integer
+        supplierName:
+          type: string
+        status:
+          type: string
+          enum: [draft, ordered, received, cancelled]
+        totalAmount:
+          type: number
+          format: float
+        notes:
+          type: string
+          nullable: true
+        orderedAt:
+          type: string
+          format: date-time
+          nullable: true
+        receivedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseOrderItem"
+      required:
+        - id
+        - supplierId
+        - supplierName
+        - status
+        - totalAmount
+        - createdAt
+        - items
+
+    PurchaseOrderItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        productId:
+          type: integer
+        productName:
+          type: string
+        sku:
+          type: string
+        quantityOrdered:
+          type: integer
+        quantityReceived:
+          type: integer
+        unitCost:
+          type: number
+          format: float
+        lineTotal:
+          type: number
+          format: float
+      required:
+        - id
+        - productId
+        - productName
+        - sku
+        - quantityOrdered
+        - quantityReceived
+        - unitCost
+        - lineTotal
+
+    CreatePurchaseOrderInput:
+      type: object
+      properties:
+        supplierId:
+          type: integer
+        notes:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseOrderItemInput"
+      required:
+        - supplierId
+        - items
+
+    PurchaseOrderItemInput:
+      type: object
+      properties:
+        productId:
+          type: integer
+        quantityOrdered:
+          type: integer
+        unitCost:
+          type: number
+          format: float
+      required:
+        - productId
+        - quantityOrdered
+        - unitCost
+
+    UpdatePurchaseOrderInput:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [draft, ordered, received, cancelled]
+        notes:
+          type: string
+          nullable: true
+
+    # ─── Sales / POS ─────────────────────────────────────────────────────────
+    Sale:
+      type: object
+      properties:
+        id:
+          type: integer
+        receiptNumber:
+          type: string
+        paymentMethod:
+          type: string
+          enum: [cash, mpesa, bank]
+        subtotal:
+          type: number
+          format: float
+        discountAmount:
+          type: number
+          format: float
+        totalAmount:
+          type: number
+          format: float
+        amountPaid:
+          type: number
+          format: float
+        changeDue:
+          type: number
+          format: float
+        mpesaRef:
+          type: string
+          nullable: true
+        bankRef:
+          type: string
+          nullable: true
+        mpesaStatus:
+          type: string
+          enum: [pending, confirmed, failed]
+          nullable: true
+        customerPhone:
+          type: string
+          nullable: true
+        customerName:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SaleItem"
+      required:
+        - id
+        - receiptNumber
+        - paymentMethod
+        - subtotal
+        - discountAmount
+        - totalAmount
+        - amountPaid
+        - changeDue
+        - createdAt
+        - items
+
+    SaleItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        productId:
+          type: integer
+        productName:
+          type: string
+        sku:
+          type: string
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+          format: float
+        costPrice:
+          type: number
+          format: float
+        discountAmount:
+          type: number
+          format: float
+        lineTotal:
+          type: number
+          format: float
+      required:
+        - id
+        - productId
+        - productName
+        - sku
+        - quantity
+        - unitPrice
+        - costPrice
+        - discountAmount
+        - lineTotal
+
+    CreateSaleInput:
+      type: object
+      properties:
+        paymentMethod:
+          type: string
+          enum: [cash, mpesa, bank]
+        amountPaid:
+          type: number
+          format: float
+        discountAmount:
+          type: number
+          format: float
+          default: 0
+        mpesaPhone:
+          type: string
+          nullable: true
+        bankRef:
+          type: string
+          nullable: true
+        customerPhone:
+          type: string
+          nullable: true
+        customerName:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SaleItemInput"
+      required:
+        - paymentMethod
+        - amountPaid
+        - items
+
+    SaleItemInput:
+      type: object
+      properties:
+        productId:
+          type: integer
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+          format: float
+        discountAmount:
+          type: number
+          format: float
+          default: 0
+      required:
+        - productId
+        - quantity
+        - unitPrice
+
+    DailySummary:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        totalSales:
+          type: integer
+        totalRevenue:
+          type: number
+          format: float
+        totalCogs:
+          type: number
+          format: float
+        grossProfit:
+          type: number
+          format: float
+        cashTotal:
+          type: number
+          format: float
+        mpesaTotal:
+          type: number
+          format: float
+        bankTotal:
+          type: number
+          format: float
+        avgTransactionValue:
+          type: number
+          format: float
+      required:
+        - date
+        - totalSales
+        - totalRevenue
+        - totalCogs
+        - grossProfit
+        - cashTotal
+        - mpesaTotal
+        - bankTotal
+        - avgTransactionValue
+
+    MpesaStatus:
+      type: object
+      properties:
+        saleId:
+          type: integer
+        mpesaRef:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [pending, confirmed, failed]
+        message:
+          type: string
+          nullable: true
+      required:
+        - saleId
+        - status
+
+    # ─── Analytics ───────────────────────────────────────────────────────────
+    AnalyticsOverview:
+      type: object
+      properties:
+        period:
+          type: string
+        totalRevenue:
+          type: number
+          format: float
+        totalTransactions:
+          type: integer
+        grossProfit:
+          type: number
+          format: float
+        profitMargin:
+          type: number
+          format: float
+        avgTransactionValue:
+          type: number
+          format: float
+        lowStockCount:
+          type: integer
+        topSellerName:
+          type: string
+          nullable: true
+        revenueChangePercent:
+          type: number
+          format: float
+          nullable: true
+      required:
+        - period
+        - totalRevenue
+        - totalTransactions
+        - grossProfit
+        - profitMargin
+        - avgTransactionValue
+        - lowStockCount
+
+    SalesTrendPoint:
+      type: object
+      properties:
+        label:
+          type: string
+        revenue:
+          type: number
+          format: float
+        transactions:
+          type: integer
+        profit:
+          type: number
+          format: float
+      required:
+        - label
+        - revenue
+        - transactions
+        - profit
+
+    TopProductsResult:
+      type: object
+      properties:
+        topByRevenue:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductPerformance"
+        bottomByRevenue:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductPerformance"
+      required:
+        - topByRevenue
+        - bottomByRevenue
+
+    ProductPerformance:
+      type: object
+      properties:
+        productId:
+          type: integer
+        name:
+          type: string
+        sku:
+          type: string
+        totalRevenue:
+          type: number
+          format: float
+        totalUnits:
+          type: integer
+        grossProfit:
+          type: number
+          format: float
+        margin:
+          type: number
+          format: float
+      required:
+        - productId
+        - name
+        - sku
+        - totalRevenue
+        - totalUnits
+        - grossProfit
+        - margin
+
+    PaymentBreakdownItem:
+      type: object
+      properties:
+        method:
+          type: string
+          enum: [cash, mpesa, bank]
+        totalAmount:
+          type: number
+          format: float
+        transactionCount:
+          type: integer
+        percentage:
+          type: number
+          format: float
+      required:
+        - method
+        - totalAmount
+        - transactionCount
+        - percentage
+
+    CategoryPerformance:
+      type: object
+      properties:
+        categoryId:
+          type: integer
+          nullable: true
+        categoryName:
+          type: string
+        totalRevenue:
+          type: number
+          format: float
+        totalUnits:
+          type: integer
+        grossProfit:
+          type: number
+          format: float
+        margin:
+          type: number
+          format: float
+      required:
+        - categoryName
+        - totalRevenue
+        - totalUnits
+        - grossProfit
+        - margin
+
+    # ─── Forecasting ─────────────────────────────────────────────────────────
+    ReorderRecommendation:
+      type: object
+      properties:
+        productId:
+          type: integer
+        sku:
+          type: string
+        name:
+          type: string
+        currentStock:
+          type: integer
+        reorderLevel:
+          type: integer
+        avgDailySales:
+          type: number
+          format: float
+        daysUntilStockout:
+          type: number
+          format: float
+          nullable: true
+        recommendedOrderQty:
+          type: integer
+        urgency:
+          type: string
+          enum: [critical, high, medium, low]
+      required:
+        - productId
+        - sku
+        - name
+        - currentStock
+        - reorderLevel
+        - avgDailySales
+        - recommendedOrderQty
+        - urgency
+
+    DemandForecast:
+      type: object
+      properties:
+        productId:
+          type: integer
+        productName:
+          type: string
+        forecastPeriodDays:
+          type: integer
+        avgDailySales:
+          type: number
+          format: float
+        forecastedDemand:
+          type: integer
+        confidence:
+          type: string
+          enum: [low, medium, high]
+        dataPointsUsed:
+          type: integer
+        dailyPoints:
+          type: array
+          items:
+            $ref: "#/components/schemas/ForecastDayPoint"
+      required:
+        - productId
+        - productName
+        - forecastPeriodDays
+        - avgDailySales
+        - forecastedDemand
+        - confidence
+        - dataPointsUsed
+        - dailyPoints
+
+    ForecastDayPoint:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        forecastedQty:
+          type: number
+          format: float
+      required:
+        - date
+        - forecastedQty
+
+    StockoutRisk:
+      type: object
+      properties:
+        productId:
+          type: integer
+        sku:
+          type: string
+        name:
+          type: string
+        currentStock:
+          type: integer
+        avgDailySales:
+          type: number
+          format: float
+        estimatedDaysLeft:
+          type: number
+          format: float
+        riskLevel:
+          type: string
+          enum: [critical, high, medium]
+      required:
+        - productId
+        - sku
+        - name
+        - currentStock
+        - avgDailySales
+        - estimatedDaysLeft
+        - riskLevel
